@@ -428,6 +428,8 @@
         const fileInfo = document.getElementById('fileInfo');
         const translateOptions = document.getElementById('translateOptions');
         const translateService = document.getElementById('translateService');
+        const sourceLangGroup = document.getElementById('sourceLangGroup');
+        const sourceLang = document.getElementById('sourceLang');
         const keepOriginal = document.getElementById('keepOriginal');
         const convertBtn = document.getElementById('convertBtn');
         const downloadBtn = document.getElementById('downloadBtn');
@@ -460,6 +462,14 @@
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 handleFile(e.target.files[0]);
+            }
+        });
+
+        translateService.addEventListener('change', (e) => {
+            if (e.target.value === 'google') {
+                sourceLangGroup.style.display = 'block';
+            } else {
+                sourceLangGroup.style.display = 'none';
             }
         });
 
@@ -583,47 +593,68 @@
 
         async function translateSubtitles(subs) {
             const total = subs.length;
+            const srcLang = sourceLang.value;
+            let failedCount = 0;
             
             for (let i = 0; i < total; i++) {
                 try {
-                    const translation = await translateWithGoogle(subs[i].text);
+                    const translation = await translateWithGoogle(subs[i].text, srcLang);
                     subs[i].translation = translation;
                     
                     const percent = Math.round(((i + 1) / total) * 100);
                     progressFill.style.width = percent + '%';
-                    progressFill.textContent = percent + '%';
+                    progressFill.textContent = `${percent}% (${i + 1}/${total})`;
                     
                     // 避免請求過快，加入短暫延遲
                     await sleep(100);
                 } catch (error) {
                     console.error(`翻譯失敗 (${i + 1}/${total}):`, error);
+                    failedCount++;
                     subs[i].translation = subs[i].text; // 失敗時保留原文
                 }
             }
+            
+            if (failedCount > 0) {
+                showStatus(`翻譯完成，但有 ${failedCount} 條字幕翻譯失敗（已保留原文）`, 'info');
+            }
         }
 
-        async function translateWithGoogle(text) {
-            try {
-                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-TW&dt=t&q=${encodeURIComponent(text)}`;
-                
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error('翻譯服務暫時無法使用');
+        async function translateWithGoogle(text, srcLang, retries = 3) {
+            let lastError;
+            
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${srcLang}&tl=zh-TW&dt=t&q=${encodeURIComponent(text)}`;
+                    
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: 翻譯服務回應錯誤`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data && data[0] && data[0][0] && data[0][0][0]) {
+                        const translated = data[0].map(item => item[0]).join('');
+                        // 成功翻譯，返回結果
+                        return translated;
+                    }
+                    
+                    throw new Error('翻譯結果格式錯誤');
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`翻譯嘗試 ${attempt}/${retries} 失敗:`, error.message);
+                    
+                    // 如果還有重試機會，等待後重試
+                    if (attempt < retries) {
+                        await sleep(500);
+                    }
                 }
-                
-                const data = await response.json();
-                
-                if (data && data[0] && data[0][0] && data[0][0][0]) {
-                    return data[0].map(item => item[0]).join('');
-                }
-                
-                throw new Error('翻譯結果格式錯誤');
-            } catch (error) {
-                console.error('Google 翻譯錯誤:', error);
-                // 如果翻譯失敗，返回原文
-                return text;
             }
+            
+            // 所有重試都失敗，拋出錯誤
+            console.error('Google 翻譯失敗（已重試 3 次）:', lastError);
+            throw new Error(`翻譯失敗: ${lastError.message}`);
         }
 
         function generateSRT(subs, keepOriginal) {
