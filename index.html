@@ -87,6 +87,79 @@
             display: none;
         }
 
+        .translate-options {
+            background: #f8f9ff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .translate-options h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .option-group {
+            margin-bottom: 15px;
+        }
+
+        .option-group label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .api-hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .api-hint a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .api-hint a:hover {
+            text-decoration: underline;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
         .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -101,7 +174,7 @@
             margin-bottom: 20px;
         }
 
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
@@ -110,6 +183,27 @@
             background: #ccc;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .btn.translating {
+            background: #ff9800;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn.translating::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            to { left: 100%; }
         }
 
         .preview {
@@ -172,6 +266,39 @@
             border: 1px solid #f5c6cb;
         }
 
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .progress {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -194,7 +321,7 @@
 <body>
     <div class="container">
         <h1>🎬 SMI 轉 SRT 字幕轉換器</h1>
-        <p class="subtitle">支援拖放上傳 SMI 字幕檔，自動轉換為 SRT 格式</p>
+        <p class="subtitle">支援拖放上傳 SMI 字幕檔，自動轉換為 SRT 格式並可翻譯</p>
 
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📁</div>
@@ -204,7 +331,40 @@
         </div>
 
         <div class="file-info" id="fileInfo"></div>
+
+        <div class="translate-options" id="translateOptions">
+            <h3>🌐 翻譯選項</h3>
+            
+            <div class="option-group">
+                <label>翻譯服務</label>
+                <select id="translateService">
+                    <option value="none">不翻譯</option>
+                    <option value="google">Google Translate (免費)</option>
+                    <option value="mistral">Mistral API</option>
+                    <option value="gemini">Gemini API</option>
+                    <option value="openai">OpenAI API</option>
+                </select>
+            </div>
+
+            <div class="option-group" id="apiKeyGroup" style="display: none;">
+                <label>API 金鑰</label>
+                <input type="text" id="apiKey" placeholder="輸入您的 API 金鑰">
+                <div class="api-hint" id="apiHint"></div>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="keepOriginal">
+                <label for="keepOriginal">保留原文（雙語字幕）</label>
+            </div>
+        </div>
+
         <div class="status" id="status"></div>
+        
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+        </div>
 
         <button class="btn" id="convertBtn" disabled>開始轉換</button>
         <button class="btn" id="downloadBtn" style="display: none;">下載 SRT 檔案</button>
@@ -219,15 +379,25 @@
         let smiContent = '';
         let srtContent = '';
         let fileName = '';
+        let subtitles = [];
 
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const fileInfo = document.getElementById('fileInfo');
+        const translateOptions = document.getElementById('translateOptions');
+        const translateService = document.getElementById('translateService');
+        const apiKeyGroup = document.getElementById('apiKeyGroup');
+        const apiKey = document.getElementById('apiKey');
+        const apiHint = document.getElementById('apiHint');
+        const targetLang = document.getElementById('targetLang');
+        const keepOriginal = document.getElementById('keepOriginal');
         const convertBtn = document.getElementById('convertBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const preview = document.getElementById('preview');
         const previewContent = document.getElementById('previewContent');
         const status = document.getElementById('status');
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progressFill');
 
         uploadArea.addEventListener('click', () => fileInput.click());
 
@@ -255,6 +425,23 @@
             }
         });
 
+        translateService.addEventListener('change', (e) => {
+            const service = e.target.value;
+            
+            if (service === 'mistral') {
+                apiKeyGroup.style.display = 'block';
+                apiHint.innerHTML = '取得 API 金鑰：<a href="https://console.mistral.ai/api-keys/" target="_blank">Mistral API</a>';
+            } else if (service === 'gemini') {
+                apiKeyGroup.style.display = 'block';
+                apiHint.innerHTML = '取得 API 金鑰：<a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>';
+            } else if (service === 'openai') {
+                apiKeyGroup.style.display = 'block';
+                apiHint.innerHTML = '取得 API 金鑰：<a href="https://platform.openai.com/api-keys" target="_blank">OpenAI API Keys</a>';
+            } else {
+                apiKeyGroup.style.display = 'none';
+            }
+        });
+
         function handleFile(file) {
             if (!file.name.match(/\.(smi|sami)$/i)) {
                 showStatus('請選擇 SMI 或 SAMI 格式的字幕檔', 'error');
@@ -271,6 +458,7 @@
                     <p><strong>檔案名稱：</strong>${file.name}</p>
                     <p><strong>檔案大小：</strong>${(file.size / 1024).toFixed(2)} KB</p>
                 `;
+                translateOptions.style.display = 'block';
                 convertBtn.disabled = false;
                 showStatus('檔案載入成功！', 'success');
             };
@@ -282,15 +470,46 @@
             reader.readAsText(file, 'UTF-8');
         }
 
-        convertBtn.addEventListener('click', () => {
+        convertBtn.addEventListener('click', async () => {
             try {
-                srtContent = convertSMItoSRT(smiContent);
+                convertBtn.disabled = true;
+                const service = translateService.value;
+
+                // 先轉換成 SRT
+                subtitles = parseSMI(smiContent);
+                
+                if (service !== 'none') {
+                    // 需要翻譯
+                    if ((service === 'mistral' || service === 'gemini' || service === 'openai') && !apiKey.value.trim()) {
+                        showStatus('請輸入 API 金鑰', 'error');
+                        convertBtn.disabled = false;
+                        return;
+                    }
+
+                    convertBtn.classList.add('translating');
+                    convertBtn.textContent = '翻譯中...';
+                    progress.style.display = 'block';
+
+                    await translateSubtitles(subtitles, service, apiKey.value.trim());
+                    
+                    convertBtn.classList.remove('translating');
+                    convertBtn.textContent = '開始轉換';
+                    progress.style.display = 'none';
+                }
+
+                srtContent = generateSRT(subtitles, keepOriginal.checked);
                 previewContent.textContent = srtContent;
                 preview.style.display = 'block';
                 downloadBtn.style.display = 'block';
                 showStatus('轉換成功！', 'success');
+                
             } catch (error) {
                 showStatus('轉換失敗：' + error.message, 'error');
+                convertBtn.classList.remove('translating');
+                convertBtn.textContent = '開始轉換';
+                progress.style.display = 'none';
+            } finally {
+                convertBtn.disabled = false;
             }
         });
 
@@ -299,13 +518,14 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = fileName + '.srt';
+            const langSuffix = translateService.value !== 'none' ? '.zh-TW' : '';
+            a.download = fileName + langSuffix + '.srt';
             a.click();
             URL.revokeObjectURL(url);
             showStatus('SRT 檔案已下載！', 'success');
         });
 
-        function convertSMItoSRT(smiText) {
+        function parseSMI(smiText) {
             const syncPattern = /<SYNC[^>]+Start=(\d+)[^>]*>/gi;
             const pPattern = /<P[^>]*>([\s\S]*?)(?=<SYNC|$)/gi;
             
@@ -330,7 +550,11 @@
                         .trim();
                     
                     if (text) {
-                        syncs.push({ start, text });
+                        syncs.push({ 
+                            start, 
+                            text,
+                            translation: null
+                        });
                     }
                 }
             }
@@ -339,17 +563,208 @@
                 throw new Error('未找到有效的字幕內容');
             }
 
+            return syncs;
+        }
+
+        async function translateSubtitles(subs, service, key) {
+            const total = subs.length;
+            
+            for (let i = 0; i < total; i++) {
+                try {
+                    const translation = await translateText(subs[i].text, service, key);
+                    subs[i].translation = translation;
+                    
+                    const percent = Math.round(((i + 1) / total) * 100);
+                    progressFill.style.width = percent + '%';
+                    progressFill.textContent = percent + '%';
+                    
+                    // 避免 API 限制，加入延遲
+                    if (service === 'google') {
+                        await sleep(100);
+                    } else {
+                        await sleep(500);
+                    }
+                } catch (error) {
+                    console.error(`翻譯失敗 (${i + 1}/${total}):`, error);
+                    subs[i].translation = subs[i].text; // 失敗時保留原文
+                }
+            }
+        }
+
+        async function translateText(text, service, key) {
+            if (service === 'google') {
+                return await translateWithGoogle(text);
+            } else if (service === 'mistral') {
+                return await translateWithMistral(text, key);
+            } else if (service === 'gemini') {
+                return await translateWithGemini(text, key);
+            } else if (service === 'openai') {
+                return await translateWithOpenAI(text, key);
+            }
+            return text;
+        }
+
+        async function translateWithMistral(text, key) {
+            const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'mistral-small-latest',
+                    messages: [{
+                        role: 'user',
+                        content: `請將以下文字翻譯成繁體中文，只需回傳翻譯結果，不要任何其他說明：\n\n${text}`
+                    }],
+                    temperature: 0.3
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Mistral API 錯誤');
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        }
+
+        async function translateWithGemini(text, key) {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${key}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `請將以下文字翻譯成繁體中文，只需回傳翻譯結果，不要任何其他說明：\n\n${text}`
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.3
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Gemini API 錯誤');
+            }
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text.trim();
+        }
+
+        async function translateWithOpenAI(text, key) {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'gpt-3.5-turbo',
+                    messages: [{
+                        role: 'user',
+                        content: `請將以下文字翻譯成繁體中文，只需回傳翻譯結果，不要任何其他說明：\n\n${text}`
+                    }],
+                    temperature: 0.3
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('OpenAI API 錯誤');
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        }
+
+        async function translateWithDeepL(text, targetLang, key) {
+            const url = 'https://api-free.deepl.com/v2/translate';
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `DeepL-Auth-Key ${key}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: [text],
+                    target_lang: targetLang.toUpperCase().replace('-', '_')
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('DeepL API 錯誤');
+            }
+
+            const data = await response.json();
+            return data.translations[0].text;
+        }
+
+        async function translateWithOpenAI(text, targetLang, key) {
+            const langNames = {
+                'en': 'English',
+                'zh-TW': 'Traditional Chinese',
+                'zh-CN': 'Simplified Chinese',
+                'ja': 'Japanese',
+                'ko': 'Korean',
+                'es': 'Spanish',
+                'fr': 'French',
+                'de': 'German',
+                'it': 'Italian',
+                'pt': 'Portuguese',
+                'ru': 'Russian',
+                'ar': 'Arabic',
+                'th': 'Thai',
+                'vi': 'Vietnamese'
+            };
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'gpt-3.5-turbo',
+                    messages: [{
+                        role: 'user',
+                        content: `Translate the following text to ${langNames[targetLang] || targetLang}. Only return the translation, nothing else:\n\n${text}`
+                    }],
+                    temperature: 0.3
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('OpenAI API 錯誤');
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        }
+
+        function generateSRT(subs, keepOriginal) {
             let srt = '';
-            for (let i = 0; i < syncs.length; i++) {
-                const current = syncs[i];
-                const next = syncs[i + 1];
+            
+            for (let i = 0; i < subs.length; i++) {
+                const current = subs[i];
+                const next = subs[i + 1];
                 
                 const startTime = formatTime(current.start);
                 const endTime = next ? formatTime(next.start) : formatTime(current.start + 2000);
                 
                 srt += `${i + 1}\n`;
                 srt += `${startTime} --> ${endTime}\n`;
-                srt += `${current.text}\n\n`;
+                
+                if (keepOriginal && current.translation) {
+                    srt += `${current.text}\n${current.translation}\n\n`;
+                } else if (current.translation) {
+                    srt += `${current.translation}\n\n`;
+                } else {
+                    srt += `${current.text}\n\n`;
+                }
             }
 
             return srt.trim();
@@ -368,14 +783,20 @@
             return String(num).padStart(size, '0');
         }
 
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
         function showStatus(message, type) {
             status.textContent = message;
             status.className = `status ${type}`;
             status.style.display = 'block';
             
-            setTimeout(() => {
-                status.style.display = 'none';
-            }, 5000);
+            if (type !== 'info') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 5000);
+            }
         }
     </script>
 </body>
