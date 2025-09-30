@@ -340,14 +340,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎬 SMI 轉 SRT 字幕轉換器</h1>
-        <p class="subtitle">免費線上工具 · 支援拖放上傳 · 可翻譯成繁體中文</p>
+        <h1>🎬 字幕轉換工具</h1>
+        <p class="subtitle">免費線上工具 · 支援 SMI/VTT 轉 SRT · 可翻譯成繁體中文</p>
 
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📁</div>
-            <div class="upload-text">點擊或拖放 SMI 字幕檔到此處</div>
-            <div class="upload-hint">支援 .smi 和 .sami 格式</div>
-            <input type="file" id="fileInput" accept=".smi,.sami">
+            <div class="upload-text">點擊或拖放字幕檔到此處</div>
+            <div class="upload-hint">支援 .smi、.sami、.vtt 格式</div>
+            <input type="file" id="fileInput" accept=".smi,.sami,.vtt">
         </div>
 
         <div class="file-info" id="fileInfo"></div>
@@ -413,7 +413,8 @@
 
         <div class="footer">
             <p>🔒 隱私安全：所有處理都在本地瀏覽器完成，檔案不會上傳到伺服器</p>
-            <p style="margin-top: 10px;">💡 開源專案 · 歡迎使用與分享</p>
+            <p style="margin-top: 10px;">📝 支援格式：SMI/SAMI/VTT → SRT</p>
+            <p style="margin-top: 5px;">💡 開源專案 · 歡迎使用與分享</p>
         </div>
     </div>
 
@@ -421,6 +422,7 @@
         let smiContent = '';
         let srtContent = '';
         let fileName = '';
+        let fileType = '';
         let subtitles = [];
 
         const uploadArea = document.getElementById('uploadArea');
@@ -474,12 +476,13 @@
         });
 
         function handleFile(file) {
-            if (!file.name.match(/\.(smi|sami)$/i)) {
-                showStatus('請選擇 SMI 或 SAMI 格式的字幕檔', 'error');
+            if (!file.name.match(/\.(smi|sami|vtt)$/i)) {
+                showStatus('請選擇 SMI、SAMI 或 VTT 格式的字幕檔', 'error');
                 return;
             }
 
-            fileName = file.name.replace(/\.(smi|sami)$/i, '');
+            fileName = file.name.replace(/\.(smi|sami|vtt)$/i, '');
+            fileType = file.name.match(/\.(smi|sami|vtt)$/i)[1].toLowerCase();
             const reader = new FileReader();
             
             reader.onload = (e) => {
@@ -488,6 +491,7 @@
                 fileInfo.innerHTML = `
                     <p><strong>檔案名稱：</strong>${file.name}</p>
                     <p><strong>檔案大小：</strong>${(file.size / 1024).toFixed(2)} KB</p>
+                    <p><strong>檔案類型：</strong>${fileType.toUpperCase()}</p>
                 `;
                 translateOptions.style.display = 'block';
                 convertBtn.disabled = false;
@@ -507,7 +511,11 @@
                 const service = translateService.value;
 
                 // 先轉換成 SRT
-                subtitles = parseSMI(smiContent);
+                if (fileType === 'vtt') {
+                    subtitles = parseVTT(smiContent);
+                } else {
+                    subtitles = parseSMI(smiContent);
+                }
                 
                 if (service === 'google') {
                     // 使用 Google 翻譯
@@ -589,6 +597,83 @@
             }
 
             return syncs;
+        }
+
+        function parseVTT(vttText) {
+            const lines = vttText.split('\n');
+            const subtitles = [];
+            let i = 0;
+            
+            // 跳過 WEBVTT 標頭和樣式
+            while (i < lines.length && !lines[i].includes('-->')) {
+                i++;
+            }
+            
+            while (i < lines.length) {
+                const line = lines[i].trim();
+                
+                // 找到時間軸行
+                if (line.includes('-->')) {
+                    const timeMatch = line.match(/(\d{2}:?\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:?\d{2}:\d{2}\.\d{3})/);
+                    
+                    if (timeMatch) {
+                        const startTime = parseVTTTime(timeMatch[1]);
+                        const endTime = parseVTTTime(timeMatch[2]);
+                        
+                        // 讀取字幕文字（可能多行）
+                        i++;
+                        let text = '';
+                        while (i < lines.length && lines[i].trim() !== '') {
+                            const textLine = lines[i].trim();
+                            // 移除 VTT 標籤
+                            const cleanLine = textLine
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/&nbsp;/g, ' ')
+                                .replace(/&lt;/g, '<')
+                                .replace(/&gt;/g, '>')
+                                .replace(/&amp;/g, '&');
+                            
+                            if (cleanLine) {
+                                text += (text ? '\n' : '') + cleanLine;
+                            }
+                            i++;
+                        }
+                        
+                        if (text) {
+                            subtitles.push({
+                                start: startTime,
+                                end: endTime,
+                                text: text,
+                                translation: null
+                            });
+                        }
+                    }
+                }
+                i++;
+            }
+            
+            if (subtitles.length === 0) {
+                throw new Error('未找到有效的 VTT 字幕內容');
+            }
+            
+            return subtitles;
+        }
+
+        function parseVTTTime(timeStr) {
+            // 支援格式: HH:MM:SS.mmm 或 MM:SS.mmm
+            const parts = timeStr.split(':');
+            let hours = 0, minutes = 0, seconds = 0;
+            
+            if (parts.length === 3) {
+                hours = parseInt(parts[0]);
+                minutes = parseInt(parts[1]);
+                seconds = parseFloat(parts[2]);
+            } else if (parts.length === 2) {
+                minutes = parseInt(parts[0]);
+                seconds = parseFloat(parts[1]);
+            }
+            
+            return Math.floor(hours * 3600000 + minutes * 60000 + seconds * 1000);
         }
 
         async function translateSubtitles(subs) {
@@ -708,7 +793,9 @@
                 const next = subs[i + 1];
                 
                 const startTime = formatTime(current.start);
-                const endTime = next ? formatTime(next.start) : formatTime(current.start + 2000);
+                // VTT 有結束時間，SMI 需要計算
+                const endTime = current.end ? formatTime(current.end) : 
+                                (next ? formatTime(next.start) : formatTime(current.start + 2000));
                 
                 srt += `${i + 1}\n`;
                 srt += `${startTime} --> ${endTime}\n`;
