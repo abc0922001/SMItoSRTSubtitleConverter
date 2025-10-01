@@ -683,8 +683,8 @@
             const srcLang = sourceLang.value;
             let failedCount = 0;
             
-            // 批次大小：每次翻譯 10 條字幕
-            const batchSize = 10;
+            // 批次大小：每次翻譯 5 條字幕（減少批次大小以提高準確性）
+            const batchSize = 5;
             // 並行數量：同時處理 3 個批次
             const concurrency = 3;
             
@@ -698,24 +698,44 @@
             
             // 處理單個批次
             const processBatch = async (batch, batchIndex) => {
-                // 合併批次中的所有文字，用特殊分隔符連接
-                const separator = '\n###SUBTITLE_BREAK###\n';
+                // 使用更獨特的分隔符，避免與內容衝突
+                const separator = '\n■■■SUBTITLE_SEPARATOR■■■\n';
                 const combinedText = batch.map(sub => sub.text).join(separator);
                 
                 try {
                     const translation = await translateWithGoogle(combinedText, srcLang);
-                    // 將翻譯結果分割回各個字幕
-                    const translations = translation.split(separator);
                     
-                    // 將翻譯結果分配給各個字幕
+                    // 將翻譯結果分割回各個字幕
+                    // 使用多種可能的分隔符進行分割
+                    let translations = translation.split('■■■SUBTITLE_SEPARATOR■■■');
+                    
+                    // 如果分隔符沒有被保留，嘗試其他分割方式
+                    if (translations.length === 1) {
+                        // Google 可能會翻譯或改變分隔符，嘗試用換行分割
+                        translations = translation.split(/\n{2,}/);
+                    }
+                    
+                    // 清理並分配翻譯結果
                     for (let i = 0; i < batch.length; i++) {
-                        if (translations[i]) {
-                            batch[i].translation = translations[i].trim();
+                        if (i < translations.length && translations[i]) {
+                            batch[i].translation = translations[i]
+                                .replace(/^[\s\n■]+|[\s\n■]+$/g, '') // 移除前後空白和殘留符號
+                                .trim();
                         } else {
+                            // 如果分割失敗，回退到原文
                             batch[i].translation = batch[i].text;
                             failedCount++;
                         }
                     }
+                    
+                    // 驗證翻譯結果
+                    for (let i = 0; i < batch.length; i++) {
+                        if (!batch[i].translation || batch[i].translation === '') {
+                            batch[i].translation = batch[i].text;
+                            failedCount++;
+                        }
+                    }
+                    
                 } catch (error) {
                     console.error(`批次 ${batchIndex + 1} 翻譯失敗:`, error);
                     // 批次翻譯失敗，保留原文
@@ -740,7 +760,7 @@
                 
                 // 批次之間稍微延遲，避免請求過快
                 if (i + concurrency < batches.length) {
-                    await sleep(200);
+                    await sleep(300);
                 }
             }
             
