@@ -614,7 +614,7 @@
                 
                 // 找到時間軸行
                 if (line.includes('-->')) {
-                    const timeMatch = line.match(/(\d{2}:?\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:?\d{2}:\d{2}\.\d{3})/);
+                    const timeMatch = line.match(/(\d{1,2}:?\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{1,2}:?\d{2}:\d{2}\.\d{3})/);
                     
                     if (timeMatch) {
                         const startTime = parseVTTTime(timeMatch[1]);
@@ -625,16 +625,18 @@
                         let text = '';
                         while (i < lines.length && lines[i].trim() !== '') {
                             const textLine = lines[i].trim();
-                            // 移除 VTT 標籤
-                            const cleanLine = textLine
-                                .replace(/<[^>]+>/g, '')
-                                .replace(/&nbsp;/g, ' ')
-                                .replace(/&lt;/g, '<')
-                                .replace(/&gt;/g, '>')
-                                .replace(/&amp;/g, '&');
-                            
-                            if (cleanLine) {
-                                text += (text ? '\n' : '') + cleanLine;
+                            // 移除 VTT 標籤和序號
+                            if (!textLine.includes('-->') && isNaN(parseInt(textLine))) {
+                                const cleanLine = textLine
+                                    .replace(/<[^>]+>/g, '')
+                                    .replace(/&nbsp;/g, ' ')
+                                    .replace(/&lt;/g, '<')
+                                    .replace(/&gt;/g, '>')
+                                    .replace(/&amp;/g, '&');
+                                
+                                if (cleanLine) {
+                                    text += (text ? '\n' : '') + cleanLine;
+                                }
                             }
                             i++;
                         }
