@@ -1,104 +1,99 @@
-# 🎬 SMI 轉 SRT 字幕轉換器 ✨
+# 🎬 SMI / VTT → SRT 字幕轉換器
 
-## 📖 專案簡介
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/abc0922001/SMItoSRTSubtitleConverter?style=social)](https://github.com/abc0922001/SMItoSRTSubtitleConverter/stargazers)
 
-SMI 轉 SRT 字幕轉換器是一個 **免費線上工具** 🚀，專為將 SMI（SAMI）格式的字幕檔案轉換為 SRT 格式而設計。支援拖放上傳，並內建 **Google 翻譯** 功能將字幕翻譯成繁體中文，還能選擇保留原文生成雙語字幕 🌐。所有處理都在您的瀏覽器中完成，**無需上傳至伺服器**，確保隱私與安全性 🔒！
+免費、開源的線上字幕格式轉換工具。
+支援 **SMI / SAMI / VTT → SRT**，可選擇使用 Google 翻譯將字幕轉為繁體中文。
+所有處理皆在 **本地瀏覽器完成**，檔案不會上傳伺服器，隱私安全 🔒。
 
-📍 **立即體驗**：直接訪問 [https://abc0922001.github.io/SMItoSRTSubtitleConverter/](https://abc0922001.github.io/SMItoSRTSubtitleConverter/) 開始轉換！
+👉 專案連結：[SMItoSRTSubtitleConverter](https://github.com/abc0922001/SMItoSRTSubtitleConverter)
 
-## 🌟 功能特性
+---
 
-- **格式轉換** 📝：輕鬆將 SMI/SAMI 格式轉為 SRT 格式。
-- **翻譯支援** 🌍：透過 Google 翻譯 API 自動將字幕翻譯成繁體中文。
-- **雙語字幕** 📜：可選擇保留原文，生成原文+譯文的雙語字幕。
-- **隱私安全** 🔐：檔案處理全在本地完成，無需上傳至伺服器。
-- **使用者友善** 😊：支援拖放上傳、直觀介面、即時進度顯示與預覽功能。
-- **多語言支援** 🗣️：支援自動偵測及多種原文語言（英文、日文、韓文等）。
+## ✨ 功能特色
+
+* 📁 支援字幕格式：`.smi` / `.sami` / `.vtt`
+* 🔄 一鍵轉換成標準 `.srt`
+* 🌐 Google 翻譯整合（免費，無需 API Key）
+
+  * 自動翻譯為繁體中文
+  * ✅ 可選擇保留原文，產生雙語字幕
+* 🖥️ 純前端運作，無伺服器依賴
+* 🔒 100% 本地處理，隱私安全
+* 📝 即時預覽與下載
+* 🎨 現代化 UI 設計（拖放上傳、進度條、狀態提示）
+
+---
 
 ## 🚀 使用方式
 
-1. **上傳檔案** 📂：
-   - 點擊或拖放 SMI/SAMI 格式字幕檔案至上傳區域。
-   - 支援 `.smi` 和 `.sami` 格式 📄。
+1. 下載或 Clone 本專案：
 
-2. **選擇轉換選項** ⚙️：
-   - **翻譯服務**：選擇「不翻譯」僅轉換格式，或選「Google 翻譯」將字幕翻譯成繁體中文 🌐。
-   - **原文語言**：若選擇翻譯，可指定原文語言（支援自動偵測 🔍）。
-   - **保留原文**：勾選「保留原文」生成雙語字幕 📜。
-
-3. **執行轉換** 🔄：
-   - 點擊「開始轉換」按鈕，系統會處理檔案並顯示進度條 📊。
-   - 轉換完成後，可在預覽區域查看 SRT 內容 👀。
-
-4. **下載檔案** 💾：
-   - 點擊「下載 SRT 檔案」按鈕，取得轉換完成的 `.srt` 檔案 🎉。
-
-## 🛠️ 安裝與部署
-
-### 本地運行 🖥️
-1. 克隆專案至本地：
    ```bash
    git clone https://github.com/abc0922001/SMItoSRTSubtitleConverter.git
+   cd SMItoSRTSubtitleConverter
    ```
-2. 在瀏覽器中開啟 `index.html`（支援 Chrome、Firefox 等）🌐。
-3. 無需額外依賴，直接運行！😎
 
-### 線上使用 ☁️
-- 直接訪問 [https://abc0922001.github.io/SMItoSRTSubtitleConverter/](https://abc0922001.github.io/SMItoSRTSubtitleConverter/)，無需安裝即可使用！🚀
+2. 用瀏覽器直接開啟 `index.html`。
 
-### 部署到其他伺服器
-1. 將專案檔案上傳至網頁伺服器（例如 GitHub Pages、Netlify）。
-2. 確保伺服器支援靜態檔案托管。
-3. 訪問部署網址即可使用！🌍
+3. 上傳字幕檔：
 
-## 💻 技術細節
+   * 點擊或拖曳 `.smi / .sami / .vtt` 檔案到上傳區。
+   * 工具會自動載入字幕資訊。
 
-- **前端技術** 🖼️：純 HTML、CSS 和 JavaScript，無需框架。
-- **樣式設計** 🎨：現代化 CSS 漸層與動畫效果，支援響應式設計。
-- **翻譯功能** 🌐：使用 Google 翻譯免費 API，無需 API 金鑰。
-- **檔案處理** 📂：透過 FileReader API 在瀏覽器中處理檔案。
-- **進度顯示** 📊：即時進度條更新，提升使用者體驗。
-- **批次處理** ⚡：翻譯時採用批次與並行處理，優化速度與穩定性。
+4. 選擇翻譯選項：
 
-## 🖥️ 系統需求
+   * 不翻譯（僅格式轉換）
+   * Google 翻譯 → 繁體中文（可選擇保留原文）
 
-- 支援現代瀏覽器（Chrome、Firefox、Edge、Safari 等）🌐。
-- 使用 Google 翻譯功能需網路連線 📡。
-- 無需安裝額外軟體或套件 ✅。
+5. 點擊「開始轉換」➡ 預覽字幕 ➡ 下載 `.srt` 檔案。
 
-## ❓ 常見問題
+---
 
-1. **為什麼我的 SMI 檔案無法轉換？** 🤔
-   - 請確認檔案為 `.smi` 或 `.sami` 格式，且內容符合標準 SMI 格式。
-   - 若檔案過大，可能影響處理速度，建議分割後重試 📂。
+## 📂 專案結構
 
-2. **翻譯功能需要付費嗎？** 💸
-   - 完全免費！使用 Google 翻譯免費 API，所有處理都在本地完成 🆓。
+```
+SMItoSRTSubtitleConverter/
+│── index.html       # 主程式（HTML / CSS / JS 全部在單檔內）
+│── README.md        # 專案說明文件
+│── LICENSE          # MIT 授權條款
+```
 
-3. **檔案會上傳到伺服器嗎？** 🔍
-   - 不會！所有處理都在你的瀏覽器中完成，檔案絕不離開你的設備 🔒。
+---
 
-## 🚧 風險與注意事項
+## 🔧 技術細節
 
-- **潛在地雷** ⚠️：Google 翻譯 API 可能因網路不穩定或 API 限制導致翻譯失敗，建議選擇「自動偵測」語言以提高成功率。
-- **替代方案** 💡：若翻譯失敗，工具會保留原文並繼續生成 SRT 檔案，確保轉換功能不受影響。
-- **建議** 📌：處理大型檔案時，建議在本地運行以提升穩定性，並避免瀏覽器記憶體過載。
+* **前端技術**：HTML + CSS + JavaScript
+* **字幕解析**
 
-## 🤝 貢獻指南
+  * `parseSMI()` → 解析 `.smi / .sami`
+  * `parseVTT()` → 解析 `.vtt`
+* **翻譯功能**
 
-歡迎為本專案貢獻力量！💪 請遵循以下步驟：
+  * 使用 Google Translate Web API
+  * 支援並行翻譯 + 自動重試
+* **輸出**
 
-1. Fork 本倉庫 📂。
-2. 建立功能分支（`git checkout -b feature/您的功能名稱`）。
-3. 提交變更（`git commit -m '新增某功能'`）。
-4. 推送至分支（`git push origin feature/您的功能名稱`）。
-5. 開啟 Pull Request 🚀。
+  * `.srt` 格式，符合常見播放器標準
+  * 可選擇輸出雙語字幕
 
-## 📜 授權
+---
 
-本專案採用 [MIT 授權](LICENSE) 🎉，歡迎自由使用、修改與分享！
+## 📜 授權條款
 
-## 📬 聯繫方式
+本專案採用 **MIT License**，可自由使用、修改與散布。
+詳見 [LICENSE](./LICENSE)。
 
-有問題或建議？請透過以下方式聯繫：
-- GitHub Issues: [提交問題](https://github.com/abc0922001/SMItoSRTSubtitleConverter/issues) 🐛
+---
+
+## 🤝 貢獻方式
+
+歡迎提出 Issue 或 Pull Request，一起改進功能與效能。
+建議方向：
+
+* ➕ 更多翻譯服務（如 DeepL、Azure Translate）
+* ➕ 支援更多字幕格式（ASS/SSA）
+* 📦 PWA / 桌面版（Electron）
+
+---
