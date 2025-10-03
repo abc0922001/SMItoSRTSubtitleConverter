@@ -683,38 +683,83 @@
             const srcLang = sourceLang.value;
             let failedCount = 0;
             
-            // 並行數量：同時處理 5 條字幕
-            const concurrency = 5;
+            // 批次大小：每次翻譯 20 條字幕（提供足夠的上下文）
+            const batchSize = 20;
+            // 並行數量：同時處理 2 個批次
+            const concurrency = 2;
+            
+            // 將字幕分組
+            const batches = [];
+            for (let i = 0; i < total; i += batchSize) {
+                batches.push(subs.slice(i, i + batchSize));
+            }
             
             let completedCount = 0;
             
-            // 處理單條字幕
-            const processSubtitle = async (sub, index) => {
+            // 處理單個批次
+            const processBatch = async (batch, batchIndex) => {
+                // 使用編號標記每條字幕，格式：[1] 字幕內容
+                const numberedText = batch.map((sub, idx) => {
+                    return `[${idx + 1}] ${sub.text}`;
+                }).join('\n\n');
+                
                 try {
-                    const translation = await translateWithGoogle(sub.text, srcLang);
-                    sub.translation = translation;
+                    const translation = await translateWithGoogle(numberedText, srcLang);
+                    
+                    // 使用正則表達式提取編號和翻譯內容
+                    const pattern = /\[(\d+)\]\s*([^\[]*?)(?=\[\d+\]|$)/gs;
+                    const matches = [...translation.matchAll(pattern)];
+                    
+                    // 將翻譯結果分配給各個字幕
+                    for (const match of matches) {
+                        const index = parseInt(match[1]) - 1;
+                        if (index >= 0 && index < batch.length) {
+                            const translatedText = match[2]
+                                .trim()
+                                .replace(/\n{3,}/g, '\n\n'); // 清理多餘換行
+                            
+                            if (translatedText) {
+                                batch[index].translation = translatedText;
+                            }
+                        }
+                    }
+                    
+                    // 檢查是否有字幕沒有翻譯到
+                    for (let i = 0; i < batch.length; i++) {
+                        if (!batch[i].translation) {
+                            console.warn(`字幕 ${batchIndex * batchSize + i + 1} 未翻譯，保留原文`);
+                            batch[i].translation = batch[i].text;
+                            failedCount++;
+                        }
+                    }
+                    
                 } catch (error) {
-                    console.error(`字幕 ${index + 1} 翻譯失敗:`, error);
-                    sub.translation = sub.text;
-                    failedCount++;
+                    console.error(`批次 ${batchIndex + 1} 翻譯失敗:`, error);
+                    // 批次翻譯失敗，保留原文
+                    batch.forEach(sub => {
+                        if (!sub.translation) {
+                            sub.translation = sub.text;
+                            failedCount++;
+                        }
+                    });
                 }
                 
-                completedCount++;
+                completedCount += batch.length;
                 const percent = Math.round((completedCount / total) * 100);
                 progressFill.style.width = percent + '%';
                 progressFill.textContent = `${percent}% (${completedCount}/${total})`;
             };
             
-            // 分批並行處理
-            for (let i = 0; i < total; i += concurrency) {
-                const batch = subs.slice(i, i + concurrency);
+            // 並行處理批次
+            for (let i = 0; i < batches.length; i += concurrency) {
+                const currentBatches = batches.slice(i, i + concurrency);
                 await Promise.all(
-                    batch.map((sub, idx) => processSubtitle(sub, i + idx))
+                    currentBatches.map((batch, idx) => processBatch(batch, i + idx))
                 );
                 
-                // 批次之間短暫延遲
-                if (i + concurrency < total) {
-                    await sleep(150);
+                // 批次之間稍微延遲，避免請求過快
+                if (i + concurrency < batches.length) {
+                    await sleep(300);
                 }
             }
             
